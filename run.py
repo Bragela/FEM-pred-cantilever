@@ -24,10 +24,10 @@ torch.backends.cudnn.deterministic = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def run():
-    layer_sizes_geometry = [32,32,32]
-    layer_sizes_network = [128,256,512,512,512,256,128,32,4]
-    num_epochs = 100
-    batch_size = 200
+    layer_sizes_geometry = [32,32,32] # not in use
+    layer_sizes_network = [16,64,512,1024,2048,1024,512,64,16,4]
+    num_epochs = 2000
+    batch_size = 10
     learning_rate = 0.001
 
     dict = {

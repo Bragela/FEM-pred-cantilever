@@ -31,7 +31,8 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
 
 
         with autocast():
-            disp_pred, mises_pred = model(center_pts,vectors,forces, coords)        
+            #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)    
+            disp_pred, mises_pred = model(forces, coords)       
             loss_disp = F.l1_loss(disp_pred, FEM_disp)
             loss_mises = F.l1_loss(mises_pred, FEM_mises)   
             loss = loss_disp + loss_mises
@@ -55,7 +56,7 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             
 
             # FEM plot
-            FEM_disp = FEM_disp[case].cpu().squeeze().detach().numpy()*20
+            FEM_disp = FEM_disp[case].cpu().squeeze().detach().numpy()*100
             x_FEM = x + FEM_disp[:,0]
             y_FEM = y + FEM_disp[:,1]
             z_FEM = z + FEM_disp[:,2]
@@ -74,7 +75,7 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             ax.zaxis.set_ticklabels([])
 
             # pred plot
-            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()*20
+            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()*100
             x_pred = x + disp_pred[:,0]
             y_pred = y + disp_pred[:,1]
             z_pred = z + disp_pred[:,2]
@@ -137,7 +138,8 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
             
             # Forward pass
             with autocast():
-                disp_pred, mises_pred = model(center_pts,vectors,forces, coords)
+                #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)
+                disp_pred, mises_pred = model(forces, coords)
                 loss_disp = F.l1_loss(disp_pred, FEM_disp)
                 loss_mises = F.l1_loss(mises_pred, FEM_mises)
                 loss = loss_disp + loss_mises
@@ -153,7 +155,7 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
 
             training_losses["train"][iter] = loss.item()
         
-            if (iter+1) % 100 == 0:   
+            if (iter+1) % 10 == 0:   
 
                 # validation loop
                 model = model.eval()

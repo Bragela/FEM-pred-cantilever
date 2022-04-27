@@ -1,4 +1,5 @@
 from tkinter import Y
+from matplotlib.pyplot import axis
 from sympy import Float
 from torch.utils.data import Dataset
 import os
@@ -48,7 +49,7 @@ class GridDataset(Dataset):
         y_coords = []
         z_coords = []
 
-        with open(f'{full_path}/Stress_and_Disp.txt','r') as f:
+        with open(f'{full_path}/Stress_Box_1.txt','r') as f:
             for i, line in enumerate(f):
                 ux, uy, uz, mises, x, y, z = line.rstrip('\n').split(',')
                 FEM_disp.append([float(ux), float(uy), float(uz)])
@@ -64,26 +65,39 @@ class GridDataset(Dataset):
         z_coords = torch.tensor(z_coords)
         coords = torch.vstack((x_coords,y_coords,z_coords))
 
+        
+        # translation
+        coords = coords.permute(1,0)
+        vec_trans = torch.mean(coords, axis=0)
+        coords = coords - vec_trans
+    
+
         # rotation
         vec_unit = vector[0]/torch.linalg.norm(vector[0])
         x_axis = torch.tensor([1,0,0]).float()
         dot_prod = torch.dot(vec_unit, x_axis)
         phi = torch.arccos(dot_prod)
         rot_mat = torch.tensor([[math.cos(phi), -math.sin(phi), 0],[math.sin(phi), math.cos(phi), 0], [0,0,1]])
-
-        center_pts = center_pts @ rot_mat.T
-        vector = vector @ rot_mat.T
         FEM_disp = FEM_disp @ rot_mat.T
-        coords = coords.permute(1,0)
         coords = coords @ rot_mat.T
         coords = coords.permute(1,0)
 
-        # # scale
-        vec_len = [torch.norm(vector[0]),torch.norm(vector[1]),torch.norm(vector[2]),torch.norm(vector[3])]
-        center_pts = center_pts/max(vec_len)
-        vector = vector/max(vec_len)
-        FEM_disp = FEM_disp/max(vec_len)
-        coords = coords/max(vec_len)
+
+        # rotation
+        # vec_unit = vector[0]/torch.linalg.norm(vector[0])
+        # x_axis = torch.tensor([1,0,0]).float()
+        # dot_prod = torch.dot(vec_unit, x_axis)
+        # phi = torch.arccos(dot_prod)
+        # rot_mat = torch.tensor([[math.cos(phi), -math.sin(phi), 0],[math.sin(phi), math.cos(phi), 0], [0,0,1]])
+
+        # center_pts = center_pts @ rot_mat.T
+        # vector = vector @ rot_mat.T
+        # FEM_disp = FEM_disp @ rot_mat.T
+        # coords = coords.permute(1,0)
+        # coords = coords @ rot_mat.T
+        # coords = coords.permute(1,0)
+
+
                 
         return center_pts, vector, forces, coords, FEM_disp, FEM_mises
 
