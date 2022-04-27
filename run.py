@@ -24,7 +24,7 @@ torch.backends.cudnn.deterministic = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def run():
-    layer_sizes = [32,128,512,1024,2048,557*4]
+    layer_sizes = [16,32,64,128,256,557]
     num_epochs = 2000
     batch_size = 1
     learning_rate = 0.001

@@ -15,31 +15,20 @@ from sklearn import preprocessing
 
 @torch.no_grad()
 def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size = 64):
-    no_grad_loss_disp = 0
-    no_grad_loss_mises = 0
+
     no_grad_loss = 0
     cnt = 0
-    for i, (center_pts, vectors, forces, coords, FEM_disp, FEM_mises) in enumerate(data_loader):
+    for i, (forces, coords, FEM_mises) in enumerate(data_loader):
 
         # transfer data to device
-        center_pts = center_pts.to(device)
-        vectors = vectors.to(device)
         forces = forces.to(device)
-        FEM_disp = FEM_disp.to(device)
         FEM_mises = FEM_mises.to(device)     
         coords = coords.to(device)
-        FEM_disp_pts = coords + FEM_disp
 
-        with autocast():
-            #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)    
-            disp_pred, mises_pred = model(forces)       
+        with autocast(): 
+            mises_pred = model(forces)       
+            loss = F.l1_loss(mises_pred, FEM_mises)   
 
-            loss_disp = F.l1_loss(disp_pred, FEM_disp_pts)
-            loss_mises = F.l1_loss(mises_pred, FEM_mises)   
-            loss = loss_disp + loss_mises
-    
-        no_grad_loss_disp += loss_disp
-        no_grad_loss_mises += loss_mises
         no_grad_loss += loss
         cnt += 1
         
@@ -49,46 +38,32 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             fig = plt.figure(figsize=plt.figaspect(0.5))
             coords = coords[case].cpu().squeeze().detach().numpy()
             max, min = coords.max().item(), coords.min().item()
-            
-
-            # FEM plot
-            FEM_disp_pts = FEM_disp_pts[case].cpu().squeeze().detach().numpy()
-            x_FEM = FEM_disp_pts[:,0]
-            y_FEM = FEM_disp_pts[:,1]
-            z_FEM = FEM_disp_pts[:,2]
+        
+            # FEM_plt
+            x = coords[:,0]
+            y = coords[:,1]
+            z = coords[:,2]
 
             stress_FEM = FEM_mises[case].cpu().squeeze().detach().numpy()
             max_a = stress_FEM.max().item()
             ax = fig.add_subplot(1,2,1, projection = '3d')
-            a = ax.scatter(x_FEM, y_FEM, z_FEM, s = 20, c= stress_FEM, cmap = 'viridis', vmin= 0, vmax=max_a)
+            a = ax.scatter(x, y, z, s = 20, c= stress_FEM, cmap = 'viridis', vmin= 0, vmax=max_a)
             fig.colorbar(a, pad=0.1, shrink=0.5, aspect=10)
-            ax.set_title(f'FEM displacement and stresses.\n Max von Mises: {round(max_a,2)}')
+            ax.set_title(f'FEM stresses.\n Max von Mises: {round(max_a,2)}')
             ax.set_xlim(min,max)
             ax.set_ylim(min,max)
             ax.set_zlim(min,max)
-            ax.xaxis.set_ticklabels([])
-            ax.yaxis.set_ticklabels([])
-            ax.zaxis.set_ticklabels([])
 
             # pred plot
-            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()
-            x_pred = disp_pred[:,0]
-            y_pred = disp_pred[:,1]
-            z_pred = disp_pred[:,2]
             stress_pred = mises_pred[case].cpu().squeeze().detach().numpy()
-            
-
             ax = fig.add_subplot(1,2,2, projection = '3d')
             max_b = stress_pred.max().item()
-            b = ax.scatter(x_pred, y_pred, z_pred, s = 20, c= stress_pred, cmap = 'viridis', vmin= 0, vmax=max_a)
+            b = ax.scatter(x, y, z, s = 20, c= stress_pred, cmap = 'viridis', vmin= 0, vmax=max_a)
             fig.colorbar(b, pad=0.1, shrink=0.5, aspect=10)
-            ax.set_title(f'Predicted displacement and stresses.\n Max von Mises: {round(max_b,2)}')
+            ax.set_title(f'Predicted stresses.\n Max von Mises: {round(max_b,2)}')
             ax.set_xlim(min,max)
             ax.set_ylim(min,max)
             ax.set_zlim(min,max)
-            ax.xaxis.set_ticklabels([])
-            ax.yaxis.set_ticklabels([])
-            ax.zaxis.set_ticklabels([])
 
             if png_cnt != 100000000:
                 plt.savefig(f'./GIFS/pngs/{png_cnt}.png')
@@ -100,11 +75,11 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             plt.close('all')
         
         
-    return no_grad_loss_disp/cnt, no_grad_loss_mises/cnt, no_grad_loss/cnt
+    return no_grad_loss/cnt
 
 
 def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, validation_loader, learning_rate=1e-3, device="cuda"):
-    no_grad_loss_disp, no_grad_loss_mises, no_grad_loss = no_grad_loop(validation_loader, model, png_cnt=0, epoch=0, device="cuda", batch_size=batch_size)
+    no_grad_loss = no_grad_loop(validation_loader, model, png_cnt=0, epoch=0, device="cuda", batch_size=batch_size)
     curr_lr =  learning_rate
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, amsgrad=True) 
@@ -121,26 +96,19 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
     for epoch in range(num_epochs):
         print("Epoch:", epoch)
         loader = tqdm.tqdm(train_loader)
-        for center_pts, vectors, forces, coords, FEM_disp, FEM_mises in loader:  
+        for forces, coords, FEM_mises in loader:  
 
             # transfer data to device
-            center_pts = center_pts.to(device)
-            vectors = vectors.to(device)
             forces = forces.to(device)
-            FEM_disp = FEM_disp.to(device)
-            FEM_mises = FEM_mises.to(device)
+            FEM_mises = FEM_mises.to(device)     
             coords = coords.to(device)
-            FEM_disp_pts = coords + FEM_disp
 
             # Forward pass
             with autocast():
-                #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)
-                disp_pred, mises_pred = model(forces)
-                loss_disp = F.l1_loss(disp_pred, FEM_disp_pts)
-                loss_mises = F.l1_loss(mises_pred, FEM_mises)
-                loss = loss_disp + loss_mises
+                mises_pred = model(forces)
+                loss = F.l1_loss(mises_pred, FEM_mises)
                 
-            loader.set_postfix(disp = loss_disp.item(), mises = loss_mises.item())
+            loader.set_postfix(mises = loss.item())
             
             # Backward and optimize
             optimizer.zero_grad()               # clear gradients
@@ -155,15 +123,14 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
 
                 # validation loop
                 model = model.eval()
-                valid_loss_disp, valid_loss_mises, valid_loss = no_grad_loop(validation_loader, model, png_cnt, epoch, device="cuda", batch_size=batch_size)
+                valid_loss = no_grad_loop(validation_loader, model, png_cnt, epoch, device="cuda", batch_size=batch_size)
                 png_cnt += 1
-                scheduler.step(loss)
-                #scheduler.step(valid_loss)
+                scheduler.step(valid_loss)
                 curr_lr =  optimizer.param_groups[0]["lr"]
-                wandb.log({"valid loss": valid_loss.item(), "valid loss disp": valid_loss_disp.item(), "valid loss von Mises": valid_loss_mises.item(), "lr": curr_lr}, commit=False)
+                wandb.log({"valid loss": valid_loss.item(), "lr": curr_lr}, commit=False)
                 model = model.train()
-            wandb.log({"train loss": loss.item(), "train loss disp": loss_disp.item(), "train loss von Mises": loss_mises.item()})
+            wandb.log({"train loss": loss.item()})
     
     # test loop
-    test_loss_disp, test_loss_mises, test_loss = no_grad_loop(test_loader, model, png_cnt=100000000, device="cuda", batch_size=batch_size)
-    print(f'Testloss: tot={test_loss:.5f}, disp={test_loss_disp:.5f}, mises={test_loss_mises:.5f}')
+    test_loss = no_grad_loop(test_loader, model, png_cnt=100000000, device="cuda", batch_size=batch_size)
+    print(f'testloss: tot={test_loss:.5f}')
