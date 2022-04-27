@@ -24,10 +24,9 @@ torch.backends.cudnn.deterministic = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def run():
-    layer_sizes_geometry = [32,32,32] # not in use
-    layer_sizes_network = [16,64,512,1024,2048,1024,512,64,16,4]
+    layer_sizes = [32,128,512,1024,2048,557*4]
     num_epochs = 2000
-    batch_size = 10
+    batch_size = 1
     learning_rate = 0.001
 
     dict = {
@@ -48,7 +47,7 @@ def run():
     test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=6, pin_memory=True)
     validation_loader = DataLoader(dataset=validation_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=6, pin_memory=True)
 
-    model = NeuralNet(layer_sizes_geometry,layer_sizes_network).to(device)
+    model = NeuralNet(layer_sizes).to(device)
     if use_existing_model:
         model.load_state_dict(torch.load("./003model.pth")["state_dict"])
     wandb.init(project="FEM_case1", entity="master-thesis-ntnu", config=dict)

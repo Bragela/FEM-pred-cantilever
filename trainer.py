@@ -28,12 +28,13 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
         FEM_disp = FEM_disp.to(device)
         FEM_mises = FEM_mises.to(device)     
         coords = coords.to(device)
-
+        FEM_disp_pts = coords + FEM_disp
 
         with autocast():
             #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)    
-            disp_pred, mises_pred = model(forces, coords)       
-            loss_disp = F.l1_loss(disp_pred, FEM_disp)
+            disp_pred, mises_pred = model(forces)       
+
+            loss_disp = F.l1_loss(disp_pred, FEM_disp_pts)
             loss_mises = F.l1_loss(mises_pred, FEM_mises)   
             loss = loss_disp + loss_mises
     
@@ -48,18 +49,13 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             fig = plt.figure(figsize=plt.figaspect(0.5))
             coords = coords[case].cpu().squeeze().detach().numpy()
             max, min = coords.max().item(), coords.min().item()
-           
-            x = coords[0]
-            y = coords[1]
-            z = coords[2]
-
             
 
             # FEM plot
-            FEM_disp = FEM_disp[case].cpu().squeeze().detach().numpy()*100
-            x_FEM = x + FEM_disp[:,0]
-            y_FEM = y + FEM_disp[:,1]
-            z_FEM = z + FEM_disp[:,2]
+            FEM_disp_pts = FEM_disp_pts[case].cpu().squeeze().detach().numpy()
+            x_FEM = FEM_disp_pts[:,0]
+            y_FEM = FEM_disp_pts[:,1]
+            z_FEM = FEM_disp_pts[:,2]
 
             stress_FEM = FEM_mises[case].cpu().squeeze().detach().numpy()
             max_a = stress_FEM.max().item()
@@ -75,10 +71,10 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             ax.zaxis.set_ticklabels([])
 
             # pred plot
-            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()*100
-            x_pred = x + disp_pred[:,0]
-            y_pred = y + disp_pred[:,1]
-            z_pred = z + disp_pred[:,2]
+            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()
+            x_pred = disp_pred[:,0]
+            y_pred = disp_pred[:,1]
+            z_pred = disp_pred[:,2]
             stress_pred = mises_pred[case].cpu().squeeze().detach().numpy()
             
 
@@ -94,7 +90,6 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             ax.yaxis.set_ticklabels([])
             ax.zaxis.set_ticklabels([])
 
-            fig.tight_layout()
             if png_cnt != 100000000:
                 plt.savefig(f'./GIFS/pngs/{png_cnt}.png')
 
@@ -135,12 +130,13 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
             FEM_disp = FEM_disp.to(device)
             FEM_mises = FEM_mises.to(device)
             coords = coords.to(device)
-            
+            FEM_disp_pts = coords + FEM_disp
+
             # Forward pass
             with autocast():
                 #disp_pred, mises_pred = model(center_pts,vectors,forces, coords)
-                disp_pred, mises_pred = model(forces, coords)
-                loss_disp = F.l1_loss(disp_pred, FEM_disp)
+                disp_pred, mises_pred = model(forces)
+                loss_disp = F.l1_loss(disp_pred, FEM_disp_pts)
                 loss_mises = F.l1_loss(mises_pred, FEM_mises)
                 loss = loss_disp + loss_mises
                 
@@ -155,13 +151,14 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
 
             training_losses["train"][iter] = loss.item()
         
-            if (iter+1) % 10 == 0:   
+            if (iter+1) % 1 == 0:   
 
                 # validation loop
                 model = model.eval()
                 valid_loss_disp, valid_loss_mises, valid_loss = no_grad_loop(validation_loader, model, png_cnt, epoch, device="cuda", batch_size=batch_size)
                 png_cnt += 1
-                scheduler.step(valid_loss)
+                scheduler.step(loss)
+                #scheduler.step(valid_loss)
                 curr_lr =  optimizer.param_groups[0]["lr"]
                 wandb.log({"valid loss": valid_loss.item(), "valid loss disp": valid_loss_disp.item(), "valid loss von Mises": valid_loss_mises.item(), "lr": curr_lr}, commit=False)
                 model = model.train()

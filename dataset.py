@@ -17,8 +17,8 @@ class GridDataset(Dataset):
         self.split = split
 
     def __len__(self):
-        return len(self.data)
-        #return 1
+        #return len(self.data)
+        return 1
 
     def __getitem__(self, idx):
         folder_name = self.data[idx]
@@ -43,33 +43,30 @@ class GridDataset(Dataset):
         vector = torch.tensor(vector)
         forces = torch.tensor(forces)
 
+
+
         FEM_disp = []
         FEM_mises = []
-        x_coords = []
-        y_coords = []
-        z_coords = []
+        coords = []
 
         with open(f'{full_path}/Stress_Box_1.txt','r') as f:
             for i, line in enumerate(f):
                 ux, uy, uz, mises, x, y, z = line.rstrip('\n').split(',')
                 FEM_disp.append([float(ux), float(uy), float(uz)])
                 FEM_mises.append(float(mises))
-                x_coords.append(float(x))
-                y_coords.append(float(y))
-                z_coords.append(float(z))
+                coords.append([float(x), float(y), float(z)])
 
         FEM_disp = torch.tensor(FEM_disp)
         FEM_mises = torch.tensor(FEM_mises)
-        x_coords = torch.tensor(x_coords)
-        y_coords = torch.tensor(y_coords)
-        z_coords = torch.tensor(z_coords)
-        coords = torch.vstack((x_coords,y_coords,z_coords))
+        coords = torch.tensor(coords)
+
 
         
         # translation
-        coords = coords.permute(1,0)
+        #coords = coords.permute(1,0)
         vec_trans = torch.mean(coords, axis=0)
         coords = coords - vec_trans
+        
     
 
         # rotation
@@ -78,9 +75,9 @@ class GridDataset(Dataset):
         dot_prod = torch.dot(vec_unit, x_axis)
         phi = torch.arccos(dot_prod)
         rot_mat = torch.tensor([[math.cos(phi), -math.sin(phi), 0],[math.sin(phi), math.cos(phi), 0], [0,0,1]])
+
         FEM_disp = FEM_disp @ rot_mat.T
         coords = coords @ rot_mat.T
-        coords = coords.permute(1,0)
 
 
         # rotation
@@ -97,7 +94,6 @@ class GridDataset(Dataset):
         # coords = coords @ rot_mat.T
         # coords = coords.permute(1,0)
 
-
                 
         return center_pts, vector, forces, coords, FEM_disp, FEM_mises
 
@@ -107,10 +103,16 @@ def main():
     center_pts, vector, forces, coords, FEM_disp, FEM_mises = dataset[0]
 
     coords = np.array(coords)
+    FEM_disp = np.array(FEM_disp)*100
     max, min = coords.max().item(), coords.min().item()
-    x = coords[0]
-    y = coords[1]
-    z = coords[2]
+
+    FEM_disp_pts = coords + FEM_disp
+
+    print(FEM_disp_pts.shape)
+    
+
+    x, y, z = FEM_disp_pts[:,0],FEM_disp_pts[:,1],FEM_disp_pts[:,2]
+
     #print(x,y,z)
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(111, projection = '3d')
