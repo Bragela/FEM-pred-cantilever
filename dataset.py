@@ -41,14 +41,18 @@ class GridDataset(Dataset):
         else:
             forces = torch.tensor(forces)
 
-        FEM_mises = []
+        FEM_stress = []
+        FEM_disp = []
         coords = []
 
         with open(f'{full_path}/Stress_Box_1.txt','r') as f:
             for i, line in enumerate(f):
-                _, _, _, mises, x, y, z = line.rstrip('\n').split(',')
-                FEM_mises.append(float(mises))
+                ux, uy, uz, stress, x, y, z = line.rstrip('\n').split(',')
+                FEM_stress.append(float(stress))
                 coords.append([float(x), float(y), float(z)])
+                FEM_disp.append([float(ux), float(uy), float(uz)])
+
+        coords_original = torch.tensor(coords)
 
         if self.coords_scaler != None:
             coords = self.coords_scaler.transform(np.array(coords).reshape(-1,3))
@@ -56,15 +60,16 @@ class GridDataset(Dataset):
         else:
             coords = torch.tensor(coords)
 
-        FEM_mises = torch.tensor(FEM_mises)
+        FEM_stress = torch.tensor(FEM_stress)
+        FEM_disp = torch.tensor(FEM_disp)
  
     
-        return forces, coords, FEM_mises
+        return forces, coords, coords_original, FEM_stress, FEM_disp
 
 def main():
 
     dataset = GridDataset(split='validation')
-    forces, coords, FEM_mises = dataset[6]
+    forces, coords, coords_original, FEM_stress, FEM_disp = dataset[6]
 
     vec_trans = torch.mean(coords, axis=0)
     coords = coords - vec_trans
@@ -78,7 +83,7 @@ def main():
 
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(111, projection = '3d')
-    ax.scatter(x,y,z, s=50, c = FEM_mises, cmap='viridis')
+    ax.scatter(x,y,z, s=50, c = FEM_stress, cmap='viridis')
 
     ax.set_xlim(min,max)
     ax.set_ylim(min,max)
