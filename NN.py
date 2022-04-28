@@ -29,8 +29,8 @@ class NeuralNet(nn.Module):
         
         forces = forces.view(B,1,1).repeat(1,P,1)   # [B,P,1]
         a = torch.cat((forces,coords), dim=2)       # [B,P,4]
-        a = a.view(B,-1)                            # [B,P*4]
-        out = self.layers(a)                        # [B,577]
+        #a = a.view(B,-1)                           # [B,P*4]
+        out = self.layers(a)                        # [B,P,4]
         disp_pred = out[:,:P*3].view(B,P,3)         # [B,P*3]
         stress_pred = out[:,P*3:]                   # [B,P*1]
 

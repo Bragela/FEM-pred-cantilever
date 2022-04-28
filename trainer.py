@@ -59,7 +59,7 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
             FEM_disp = FEM_disp @ rot_mat.T
 
             coords_original = coords_original.cpu().squeeze().detach().numpy()
-            FEM_disp = FEM_disp.cpu().squeeze().detach().numpy()
+            FEM_disp = FEM_disp.cpu().squeeze().detach().numpy()*20
             max, min = coords_original.max().item(), coords_original.min().item()
 
             FEM_x = coords_original[:,0] + FEM_disp[:,0]
@@ -78,7 +78,7 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
 
             # pred plot
             stress_pred = stress_pred[case].cpu().squeeze().detach().numpy()
-            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()
+            disp_pred = disp_pred[case].cpu().squeeze().detach().numpy()*20
 
             pred_x = coords_original[:,0] + disp_pred[:,0]
             pred_y = coords_original[:,1] + disp_pred[:,1]

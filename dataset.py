@@ -71,19 +71,22 @@ def main():
     dataset = GridDataset(split='validation')
     forces, coords, coords_original, FEM_stress, FEM_disp = dataset[6]
 
-    vec_trans = torch.mean(coords, axis=0)
-    coords = coords - vec_trans
+    vec_trans = torch.mean(coords_original, axis=0)
+    coords_original = coords_original - vec_trans
     rot_mat = torch.tensor([[math.cos(math.pi/2), -math.sin(math.pi/2),0], [math.sin(math.pi/2), math.cos(math.pi/2),0],[0, 0,1]])
-    coords = coords @ rot_mat.T
+    coords_original = coords_original @ rot_mat.T
 
-    coords = coords.cpu().squeeze().detach().numpy()
+    coords_original = coords_original.cpu().squeeze().detach().numpy()
+    FEM_disp = FEM_disp.cpu().squeeze().detach().numpy()*50
     max, min = coords.max().item(), coords.min().item()
 
-    x, y, z = coords[:,0],coords[:,1],coords[:,2]
+    FEM_x = coords_original[:,0] + FEM_disp[:,0]
+    FEM_y = coords_original[:,1] + FEM_disp[:,1]
+    FEM_z = coords_original[:,2] + FEM_disp[:,2]
 
     fig = plt.figure(figsize=plt.figaspect(0.5))
     ax = fig.add_subplot(111, projection = '3d')
-    ax.scatter(x,y,z, s=50, c = FEM_stress, cmap='viridis')
+    ax.scatter(FEM_x,FEM_y,FEM_z, s=50, c = FEM_stress, cmap='viridis')
 
     ax.set_xlim(min,max)
     ax.set_ylim(min,max)
