@@ -13,11 +13,12 @@ from sklearn import preprocessing
 
 
 class GridDataset(Dataset):
-    def __init__(self, root_dir="data", split="train", force_scaler=None):
+    def __init__(self, root_dir="data", split="train", force_scaler=None, coords_scaler=None):
         self.data_path = f"{root_dir}/{split}" 
         self.data = [folder for folder in os.listdir(self.data_path)]
         self.split = split
         self.force_scaler = force_scaler
+        self.coords_scaler = coords_scaler
 
     def __len__(self):
         return len(self.data)
@@ -48,12 +49,23 @@ class GridDataset(Dataset):
                 _, _, _, mises, x, y, z = line.rstrip('\n').split(',')
                 FEM_mises.append(float(mises))
                 coords.append([float(x), float(y), float(z)])
-  
 
-        FEM_mises = torch.tensor(FEM_mises)
+        if self.coords_scaler != None:
+            x = [item[0] for item in coords]
+            y = [item[1] for item in coords]
+            z = [item[2] for item in coords]
+
+            x = self.coords_scaler.transform(np.array(x).reshape(1,-1))
+            y = self.coords_scaler.transform(np.array(y).reshape(1,-1))
+            z = self.coords_scaler.transform(np.array(z).reshape(1,-1))
+
+            coords = np.array([x,y,z])
+            coords = torch.from_numpy(coords).float().squeeze(0)
+        else:
+            coords = torch.tensor(coords)
+
+        FEM_mises = torch.tensor(FEM_mises).view(-1,1)
         coords = torch.tensor(coords)
-
-        
 
         return forces, coords, FEM_mises
 
@@ -61,7 +73,6 @@ def main():
 
     dataset = GridDataset(split='validation')
     forces, coords, FEM_mises = dataset[6]
-    print(FEM_mises.shape, FEM_mises)
 
     vec_trans = torch.mean(coords, axis=0)
     coords = coords - vec_trans

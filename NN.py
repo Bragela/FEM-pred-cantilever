@@ -23,6 +23,13 @@ class NeuralNet(nn.Module):
         #         torch.nn.init.normal_(param.weight, 0, 0.001)
         #         torch.nn.init.zeros_(param.bias)
 
-    def forward(self, forces):  # [B,1]       
-        pred_mises = self.layers(forces)   # [B,P]
+    def forward(self, forces, coords):  # [B,1] [B,P,3]
+        B = forces.shape[0]
+        P = coords.shape[1]
+
+        forces = forces.view(B,1,1).repeat(1,P,1)
+        a = torch.cat((forces,coords), dim=2)           #[B,P,4]
+        pred_mises = self.layers(forces)                #[B,P,1]
+
+
         return pred_mises

@@ -29,7 +29,7 @@ def no_grad_loop(data_loader, model, png_cnt, epoch=2, device="cuda", batch_size
         coords = coords.to(device)
 
         with autocast(): 
-            mises_pred = model(forces)       
+            mises_pred = model(forces, coords)  
             loss = F.l1_loss(mises_pred, FEM_mises)   
 
         no_grad_loss += loss
@@ -109,8 +109,6 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
         loader = tqdm.tqdm(train_loader)
         for forces, coords, FEM_mises in loader:  
 
-            
-
             # transfer data to device
             forces = forces.to(device)
             FEM_mises = FEM_mises.to(device)     
@@ -118,7 +116,7 @@ def train(model: NeuralNet, num_epochs, batch_size, train_loader, test_loader, v
 
             # Forward pass
             with autocast():
-                mises_pred = model(forces)
+                mises_pred = model(forces, coords)
                 loss = F.l1_loss(mises_pred, FEM_mises)
                 
             loader.set_postfix(mises = loss.item())

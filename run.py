@@ -29,12 +29,14 @@ import dataset
 def getAllForces():
     training_dataset = GridDataset()
     data = torch.stack([d[0] for d in training_dataset]).numpy()
-    return data
+    data_1 = torch.stack([d[1][:,:1] for d in training_dataset]).squeeze().numpy()
+
+    return data, data_1
 
 
 
 def run():
-    layer_sizes = [512,512,557]
+    layer_sizes = [512,512,1]
     num_epochs = 2000
     batch_size = 10
     batch_size_train = 32
@@ -48,13 +50,14 @@ def run():
 
     use_existing_model = False
 
-    data = getAllForces()
+    data, data_1 = getAllForces()
     forces_scaler = preprocessing.StandardScaler().fit(data)
+    coords_scaler = preprocessing.StandardScaler().fit(data_1)
     
     # Dataset
-    train_dataset = GridDataset(force_scaler=forces_scaler)
-    test_dataset = GridDataset(split="test",force_scaler=forces_scaler)
-    validation_dataset = GridDataset(split="validation",force_scaler=forces_scaler)
+    train_dataset = GridDataset(force_scaler=forces_scaler, coords_scaler=coords_scaler)
+    test_dataset = GridDataset(split="test",force_scaler=forces_scaler, coords_scaler=coords_scaler)
+    validation_dataset = GridDataset(split="validation",force_scaler=forces_scaler, coords_scaler=coords_scaler)
 
     # Data loader
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size_train, shuffle=True,  drop_last=True, num_workers=6, pin_memory=True)
