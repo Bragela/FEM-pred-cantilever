@@ -33,7 +33,6 @@ class GridDataset(Dataset):
             
             for i, line in enumerate(f):
                 F = line.rstrip('\n')
-                #forces.append(float(F)/10000)
                 forces.append(float(F))
 
         if self.force_scaler != None:
@@ -44,6 +43,7 @@ class GridDataset(Dataset):
 
         FEM_mises = []
         coords = []
+
         with open(f'{full_path}/Stress_Box_1.txt','r') as f:
             for i, line in enumerate(f):
                 _, _, _, mises, x, y, z = line.rstrip('\n').split(',')
@@ -51,22 +51,14 @@ class GridDataset(Dataset):
                 coords.append([float(x), float(y), float(z)])
 
         if self.coords_scaler != None:
-            x = [item[0] for item in coords]
-            y = [item[1] for item in coords]
-            z = [item[2] for item in coords]
-
-            x = self.coords_scaler.transform(np.array(x).reshape(1,-1))
-            y = self.coords_scaler.transform(np.array(y).reshape(1,-1))
-            z = self.coords_scaler.transform(np.array(z).reshape(1,-1))
-
-            coords = np.array([x,y,z])
+            coords = self.coords_scaler.transform(np.array(coords).reshape(-1,3))
             coords = torch.from_numpy(coords).float().squeeze(0)
         else:
             coords = torch.tensor(coords)
 
-        FEM_mises = torch.tensor(FEM_mises).view(-1,1)
-        coords = torch.tensor(coords)
-
+        FEM_mises = torch.tensor(FEM_mises)
+ 
+    
         return forces, coords, FEM_mises
 
 def main():

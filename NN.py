@@ -9,7 +9,7 @@ class NeuralNet(nn.Module):
     def __init__(self, layer_sizes):
         super(NeuralNet, self).__init__()
         layers = []
-        input_features = 1
+        input_features = 2228
         for i, output_features in enumerate(layer_sizes):
             layers.append(nn.Linear(input_features, output_features))
             #layers.append(nn.BatchNorm1d(output_features))
@@ -26,10 +26,11 @@ class NeuralNet(nn.Module):
     def forward(self, forces, coords):  # [B,1] [B,P,3]
         B = forces.shape[0]
         P = coords.shape[1]
-
-        forces = forces.view(B,1,1).repeat(1,P,1)
-        a = torch.cat((forces,coords), dim=2)           #[B,P,4]
-        pred_mises = self.layers(forces)                #[B,P,1]
+        
+        forces = forces.view(B,1,1).repeat(1,P,1)   # [B,P,1]
+        a = torch.cat((forces,coords), dim=2)       # [B,P,4]
+        a = a.view(B,-1)                            # [B,P*4]
+        pred_mises = self.layers(a)                 # [B,577]
 
 
         return pred_mises

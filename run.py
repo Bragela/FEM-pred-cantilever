@@ -29,14 +29,13 @@ import dataset
 def getAllForces():
     training_dataset = GridDataset()
     data = torch.stack([d[0] for d in training_dataset]).numpy()
-    data_1 = torch.stack([d[1][:,:1] for d in training_dataset]).squeeze().numpy()
-
+    data_1 = torch.stack([d[1] for d in training_dataset]).view(-1,3).numpy()
     return data, data_1
 
 
 
 def run():
-    layer_sizes = [512,512,1]
+    layer_sizes = [512,557]
     num_epochs = 2000
     batch_size = 10
     batch_size_train = 32
