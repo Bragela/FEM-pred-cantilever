@@ -35,7 +35,7 @@ def getAllForces():
 
 
 def run():
-    layer_sizes = [512,557*4]
+    layer_sizes = [512,4]
     num_epochs = 2000
     batch_size = 10
     batch_size_train = 32

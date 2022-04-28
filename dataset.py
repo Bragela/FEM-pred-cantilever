@@ -62,7 +62,6 @@ class GridDataset(Dataset):
 
         FEM_stress = torch.tensor(FEM_stress)
         FEM_disp = torch.tensor(FEM_disp)
- 
     
         return forces, coords, coords_original, FEM_stress, FEM_disp
 
