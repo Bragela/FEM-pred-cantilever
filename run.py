@@ -8,6 +8,7 @@ from torch import autograd
 import numpy as np
 import random 
 import wandb
+from sklearn import preprocessing
 
 
 # Fixed seed
@@ -23,10 +24,20 @@ torch.backends.cudnn.deterministic = True
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+import dataset
+
+def getAllForces():
+    training_dataset = GridDataset()
+    data = torch.stack([d[0] for d in training_dataset]).numpy()
+    return data
+
+
+
 def run():
-    layer_sizes = [16,32,64,128,256,557]
+    layer_sizes = [512,512,557]
     num_epochs = 2000
-    batch_size = 1
+    batch_size = 10
+    batch_size_train = 32
     learning_rate = 0.001
 
     dict = {
@@ -37,21 +48,26 @@ def run():
 
     use_existing_model = False
 
+    data = getAllForces()
+    forces_scaler = preprocessing.StandardScaler().fit(data)
+    
     # Dataset
-    train_dataset = GridDataset()
-    test_dataset = GridDataset(split="test")
-    validation_dataset = GridDataset(split="validation")
+    train_dataset = GridDataset(force_scaler=forces_scaler)
+    test_dataset = GridDataset(split="test",force_scaler=forces_scaler)
+    validation_dataset = GridDataset(split="validation",force_scaler=forces_scaler)
 
     # Data loader
-    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True,  drop_last=True, num_workers=6, pin_memory=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size_train, shuffle=True,  drop_last=True, num_workers=6, pin_memory=True)
     test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=6, pin_memory=True)
     validation_loader = DataLoader(dataset=validation_dataset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=6, pin_memory=True)
+
+
 
     model = NeuralNet(layer_sizes).to(device)
     if use_existing_model:
         model.load_state_dict(torch.load("./003model.pth")["state_dict"])
     wandb.init(project="FEM_case1", entity="master-thesis-ntnu", config=dict)
-
+    wandb.watch(model, log='all', log_freq=10)
     train(model, num_epochs, batch_size, train_loader, test_loader, validation_loader, learning_rate=learning_rate, device=device)
 
     # Save model
